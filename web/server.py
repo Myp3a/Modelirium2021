@@ -1,10 +1,49 @@
-from enum import EnumMeta
+import aiohttp
 from aiohttp import web
 import mariadb
 import datetime
 import logging
 logging.basicConfig(level=logging.DEBUG)
-class DB:
+
+class MessageDB:
+    def __init__(self):
+        self.db = mariadb.connect(
+            user="root",
+            password="Meow",
+            host="localhost",
+            port=3306)
+        self.cur = self.db.cursor()
+        self.cur.execute("SELECT * FROM information_schema.partitions WHERE TABLE_SCHEMA = 'miac'")
+        if len(self.cur.fetchall()) == 0:
+            self.cur.execute("CREATE DATABASE IF NOT EXISTS miac;")
+            self.db.commit()
+
+        self.cur.execute("SELECT * FROM information_schema.tables WHERE TABLE_NAME = 'messages'")
+        if len(self.cur.fetchall()) == 0:
+            self.cur.execute("""CREATE TABLE miac.messages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        snils INT NOT NULL,
+        text TEXT NOT NULL,
+        delivered BOOLEAN NOT NULL
+        ) ENGINE=InnoDB;""")
+            self.db.commit()
+
+    def new_message(self, patient_id, text):
+        self.cur.execute("INSERT INTO miac.messages(snils,text,delivered) VALUES (?,?,?);",(patient_id,text,False))
+        self.db.commit()
+    
+    def get_messages(self,patient_id=None,unread=False):
+        query = "SELECT * FROM miac.messages"
+        if patient_id is not None or unread is True:
+            query += " WHERE"
+        if patient_id is not None:
+            query += f" snils = '{patient_id}'"
+        if unread:
+            self.cur.execute(query + " delivered = '?';",(not unread,))
+        else:
+            self.cur.execute(query +';')
+        return self.cur.fetchall()
+class MeasuresDB:
     def __init__(self):
         self.db = mariadb.connect(
             user="root",
@@ -88,7 +127,8 @@ def format_static_line(value,name,color,values):
         data.append(value)
     return f'{{show: true, spanGaps: true, label: "{name}",stroke:"{color}",width: 3}}',data
 
-db = DB()    
+val_db = MeasuresDB()    
+msg_db = MessageDB()
 routes = web.RouteTableDef()
 routes.static('/dist', 'html/dist')
 routes.static('/static', 'html/static')
@@ -107,15 +147,26 @@ async def root(req):
 async def meow(req):
     pass
 
+@routes.get('/ws')
+async def ws_handler(req):
+    ws = web.WebSocketResponse()
+    await ws.prepare(req)
+    async for msg in ws:
+        if msg.type == aiohttp.WSMsgType.TEXT:
+            patient_id,text = msg.data.split(':::')
+            msg_db.new_message(patient_id,text) 
+    return ws
+
 @routes.get('/{patient_id}')
 async def patient_page(req):
+    print(msg_db.get_messages())
     #print(db.patient_states(req.match_info['patient_id']))
     patient_id = req.match_info['patient_id']
-    data = db.get_patient_data(patient_id)
+    data = val_db.get_patient_data(patient_id)
     if len(data) != 0:
         name = 'Пупкин Василий Иванович'
         birth = datetime.datetime.fromtimestamp(185938914)
-        means = db.patient_means(patient_id)
+        means = val_db.patient_means(patient_id)
         fmt_data = {'ts':None,'upper':None,'lower':None,'pulse':None,'oxymetr':None,'mid_upper':None,'mid_lower':None,'mid_pulse':None}
         fmt_data['ts'] = format_in_series("ts","Время",(0,0,0),data)
         fmt_data['upper'] = format_in_series("up_press","Верхее А/Д",(100,100,200),data)
@@ -142,7 +193,7 @@ async def patient_page(req):
 
 @routes.get('/{patient_id}/data')
 async def get_data(req):
-    values = db.get_patient_data(req.match_info['patient_id'],req.query.get('ts_start',None),req.query.get('ts_end',None))
+    values = val_db.get_patient_data(req.match_info['patient_id'],req.query.get('ts_start',None),req.query.get('ts_end',None))
     #print(values)
     return web.json_response(values)
 
@@ -150,7 +201,7 @@ async def get_data(req):
 async def set_data(req):
     data = await req.post()
     print(data)
-    db.add_measurement(req.match_info['patient_id'],data['upper'],data['lower'],data['pulse'],oxymetr=data.get('oxymetr',None),state=data.get('state',None))
+    val_db.add_measurement(req.match_info['patient_id'],data['upper'],data['lower'],data['pulse'],oxymetr=data.get('oxymetr',None),state=data.get('state',None))
     return web.HTTPOk()
 
 app = web.Application()
