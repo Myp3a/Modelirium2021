@@ -42,12 +42,30 @@
       border-color: rgb(115, 168, 146);
       font-weight:600;
     }
+    .container {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      height: 45%;
+    }
+    .contained {
+      margin: auto;
+      font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif;
+    }
   </style>
 </head>
 <body style="background: rgb(235, 240, 238);">
   <div class="head">
     <span class="header-text">
       МИАЦ
+    </span>
+  </div>
+  <div class="container">
+    <span class="contained">
+      <img src="static/person.png" style="flex-shrink: 100;">
+    </span>
+    <span class="contained">
+      ===USERDATA===
     </span>
   </div>
   <div id="graph-area" class="graph">
