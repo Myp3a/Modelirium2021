@@ -198,8 +198,8 @@ async def patient_page(req):
         name = 'Пациент не определен'
         birth = datetime.datetime.fromtimestamp(0)
         means = {'upper':0,'lower':0,'pulse':0}
-        values = []
-        series = '{}'
+        timestamps = []
+        datasets = '{}'
     userdata = f'<p><strong>ФИО: </strong>{name}</p>\n<p><strong>Дата рождения: </strong>{birth.strftime("%d.%m.%Y")} ({int((datetime.datetime.now()-birth).days/365)} лет)</p>\n<p><strong>Средние показатели: </strong>{means["upper"]}/{means["lower"]}/{means["pulse"]}</p>'
     with open('index.html','r',encoding='utf-8') as f:
         html = f.read()
