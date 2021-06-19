@@ -1,10 +1,23 @@
 <html>
 <head>
   <title>ЫЫЫЫЫ</title> 
-  <link rel="stylesheet" href="dist/uPlot.min.css">
-  <script src="dist/uPlot.iife.min.js"></script>
+  <script src="dist/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+  <script src="dist/chartjs-plugin-zoom.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@next/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <script>
+    let graph_end = + new Date();
+    let graph_start = + graph_end - 86400000;
+    let graph_pointer = null;
+  </script>
   <style>
-    body, p, div, ul, ol, li, span, strong, h1, h2,h3, img{margin:0; padding:0;}
+    html, body {
+      width:  100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+    p, div, ul, ol, li, span, strong, h1, h2,h3, img{margin:0; padding:0;}
     h1 {left: 50px;}
 	  .head {position: relative;
       width: 100%;
@@ -20,6 +33,7 @@
       font-weight: bold;}
     .graph {
       position: fixed;
+      width: 100%;
       top: 50%;
       bottom: 0%;
     }
@@ -72,23 +86,90 @@
     </span>
   </div>
   <div id="graph-area" class="graph">
+    <canvas id="graph-canvas"></canvas>
+    <script>
+      const higher = (ctx,value,border) => ctx.p0.parsed.y > border || ctx.p1.parsed.y > border ? value : undefined;
+      const lower = (ctx,value,border) => ctx.p0.parsed.y < border || ctx.p0.parsed.y < border ? value : undefined;
+      const higher_point = (ctx,value,border) => ctx.p0.parsed.y > border ? value : undefined;
+      const lower_point = (ctx,value,border) => ctx.p0.parsed.y < border ? value : undefined;
+      const canvas = document.getElementById('graph-canvas');
+      const context = canvas.getContext('2d');
+      window.addEventListener('resize', resizeCanvas, false);
+
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.clientHeight;
+                    
+        drawStuff(); 
+      }
+
+      resizeCanvas();
+            
+      function drawStuff() {
+        if (graph_pointer){
+          graph_pointer.destroy()
+        };
+        const ctx = document.getElementById('graph-canvas');
+        var myChart = new Chart(ctx,{
+          options: {
+            animation: false,
+            scales: {
+              x: {
+                type: 'time',
+                ticks: {
+                  autoSkip: true,
+                },
+                min: graph_start,
+                max: graph_end,
+              },
+              y:{
+                suggestedMin:0,
+                suggestedMax:200,
+              }
+            },
+            parsing: true,
+            plugins: {
+              zoom: {
+                pan: {
+                  enabled: true,
+                  mode: 'x',
+                },
+                zoom: {
+                  wheel:{
+                    enabled: true,
+                    modifierKey: 'ctrl'
+                  },
+                  mode: 'x',
+                },
+                limits:{
+                  x:{
+                    minRange: 1000,
+                  },
+                }
+              }
+            },
+            interaction:{
+              intersect: true,
+              mode: 'index',
+            },
+          },
+          type: 'line',
+          data: {
+            labels: ===TIMESTAMPS===,
+            datasets: [===DATASETS===],
+          },
+        });
+        graph_pointer = myChart;
+        if (graph_end != myChart.data.labels[myChart.data.labels.length-1]){
+          graph_end = myChart.data.labels[myChart.data.labels.length-1];
+        }
+      }
+    </script>
     <span class="buttons-container">
-      <button class="buttons" onclick="uplot.setScale('x', {min: + new Date() / 1000 - 3600, max: + new Date() / 1000})">Час</button>
-      <button class="buttons" onclick="uplot.setScale('x', {min: + new Date() / 1000 - 900, max: + new Date() / 1000})">15 минут</button>
-      <button class="buttons" onclick="uplot.setScale('x', {min: + new Date() / 1000 - 60, max: + new Date() / 1000})">Минута</button> 
+      <button class="buttons" onclick="graph_start = graph_end - 3600000; drawStuff()">Час</button>
+      <button class="buttons" onclick="graph_start = graph_end - 900000; drawStuff()">15 минут</button>
+      <button class="buttons" onclick="graph_start = graph_end - 60000; drawStuff()">Минута</button> 
     </span>
   </div>
-    <script>
-      let data = ===DATA===;
-      let opts = {
-          id: "chart1",
-          width: screen.width,
-          height: document.getElementById("graph-area").clientHeight-50,
-          series: [===SERIES===],
-        };
-      let chart_area = document.getElementById("graph-area");
-      let uplot = new uPlot(opts, data, chart_area);
-      uplot.setScale('x', {min: + new Date() / 1000 - 2592000, max: + new Date() / 1000})
-    </script>
 </body>
 </html>
