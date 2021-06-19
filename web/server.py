@@ -175,7 +175,6 @@ async def ws_handler(req):
 
 @routes.get('/{patient_id}')
 async def patient_page(req):
-    print(msg_db.get_messages())
     #print(db.patient_states(req.match_info['patient_id']))
     patient_id = req.match_info['patient_id']
     data = val_db.get_patient_data(patient_id)
@@ -221,6 +220,33 @@ async def set_data(req):
     print(data)
     val_db.add_measurement(req.match_info['patient_id'],data['upper'],data['lower'],data['pulse'],oxymetr=data.get('oxymetr',None),state=data.get('state',None))
     return web.HTTPOk()
+
+@routes.get('/{patient_id}/journal')
+async def get_journal(req):
+    values = val_db.get_patient_data(req.match_info['patient_id'],req.query.get('ts_start',None),req.query.get('ts_end',None))
+    #print(values)
+    values.reverse()
+    html = """<html>
+<body>
+<table style="width:100%">
+<tr>
+<th>Время</th>
+<th>Верхнее А/Д</th>
+<th>Нижнее А/Д</th>
+<th>Пульс</th>
+</tr>"""
+    for val in values:
+        html += f"""
+<tr>
+<td>{datetime.datetime.fromtimestamp(val['ts']).strftime("%Y.%m.%d %H:%M:%S")}</td>
+<td>{val['up_press']}</td>
+<td>{val['down_press']}</td>
+<td>{val['pulse']}</td>
+</tr>"""
+    html +="""
+</body>
+</html>"""
+    return web.Response(text=html,content_type='text/html')
 
 app = web.Application()
 app.add_routes(routes)
