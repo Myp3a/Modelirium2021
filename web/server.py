@@ -146,8 +146,8 @@ def format_static_line(value,name,color,values):
 val_db = MeasuresDB()    
 msg_db = MessageDB()
 routes = web.RouteTableDef()
-routes.static('/dist', 'html/dist')
-routes.static('/static', 'html/static')
+routes.static('/dist', 'dist')
+routes.static('/static', 'static')
 
 @routes.get('/')
 async def root(req):
@@ -201,7 +201,7 @@ async def patient_page(req):
         values = []
         series = '{}'
     userdata = f'<p><strong>ФИО: </strong>{name}</p>\n<p><strong>Дата рождения: </strong>{birth.strftime("%d.%m.%Y")} ({int((datetime.datetime.now()-birth).days/365)} лет)</p>\n<p><strong>Средние показатели: </strong>{means["upper"]}/{means["lower"]}/{means["pulse"]}</p>'
-    with open('html\\index.html','r',encoding='utf-8') as f:
+    with open('index.html','r',encoding='utf-8') as f:
         html = f.read()
         html = html.replace("===TIMESTAMPS===",str([val for val in timestamps]))
         html = html.replace("===DATASETS===",datasets)
