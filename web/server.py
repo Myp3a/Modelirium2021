@@ -115,11 +115,27 @@ class MeasuresDB:
             sum_pulse += line['pulse']
         return {'upper':f"{sum_upper/len(data):.1f}",'lower':f"{sum_lower/len(data):.1f}",'pulse':f"{sum_pulse/len(data):.1f}"}
 
-def format_in_series(tag,name,color,values):
+# def format_in_series(tag,name,color,values):
+#     data = []
+#     for row in values:
+#         data.append(row[tag])
+#     return f'{{show: true, spanGaps: true, label: "{name}",stroke:"rgb({color})", width: 1, fill: "rgba({", ".join([str(chn) for chn in color])}, 0.25)",dash: [10, 5]}}',data
+
+def format_in_series(tag,name,color,values,not_lower=None,not_higher=None,parsed=False):
     data = []
-    for row in values:
-        data.append(row[tag])
-    return f'{{show: true, spanGaps: true, label: "{name}",stroke:"rgb({color})", width: 1, fill: "rgba({", ".join([str(chn) for chn in color])}, 0.25)",dash: [10, 5]}}',data
+    if parsed:
+        for row in values:
+            data.append({'x':row['ts']*1000,'y':row[tag]})
+    else:
+        for row in values:
+            data.append(row[tag])
+    definition = f'{{label: "{name}",data: {data}, borderColor: "rgb({", ".join([str(chn) for chn in color])})"'
+    if not_lower is not None:
+        definition += f", segment: {{borderColor: ctx => lower(ctx, 'rgb(200,15,15)', {not_lower}),}}"
+    if not_higher is not None:
+        definition += f", segment: {{borderColor: ctx => higher(ctx, 'rgb(200,15,15)', {not_higher}),}}"
+    definition += '}'
+    return definition,data
 
 def format_static_line(value,name,color,values):
     data = []
@@ -169,14 +185,16 @@ async def patient_page(req):
         means = val_db.patient_means(patient_id)
         fmt_data = {'ts':None,'upper':None,'lower':None,'pulse':None,'oxymetr':None,'mid_upper':None,'mid_lower':None,'mid_pulse':None}
         fmt_data['ts'] = format_in_series("ts","Время",(0,0,0),data)
-        fmt_data['upper'] = format_in_series("up_press","Верхее А/Д",(100,100,200),data)
+        fmt_data['upper'] = format_in_series("up_press","Верхее А/Д",(0,200,200),data,not_higher=140)
         fmt_data['lower'] = format_in_series("down_press","Нижнее А/Д",(200,200,0),data)
         fmt_data['pulse'] = format_in_series("pulse","Пульс",(0,200,0),data)
-        fmt_data['mid_upper'] = format_static_line(means['upper'], "Верхнее А/Д (ср.)", "lightblue",data)
-        fmt_data['mid_lower'] = format_static_line(means['lower'], "Нижнее А/Д (ср.)", "yellow",data)
-        fmt_data['mid_pulse'] = format_static_line(means['pulse'], "Пульс (ср.)", "green",data)
-        series = f'{{label: "Время"}},{fmt_data["upper"][0]},{fmt_data["lower"][0]},{fmt_data["pulse"][0]},{fmt_data["mid_upper"][0]},{fmt_data["mid_lower"][0]},{fmt_data["mid_pulse"][0]}'
-        values = [fmt_data['ts'][1],fmt_data['upper'][1],fmt_data['lower'][1],fmt_data['pulse'][1],fmt_data['mid_upper'][1],fmt_data['mid_lower'][1],fmt_data['mid_pulse'][1]]
+        timestamps = [val*1000 for val in fmt_data['ts'][1]]
+        datasets = fmt_data['upper'][0] + ',' + fmt_data['lower'][0] + ',' + fmt_data['pulse'][0]
+        # fmt_data['mid_upper'] = format_static_line(means['upper'], "Верхнее А/Д (ср.)", "lightblue",data)
+        # fmt_data['mid_lower'] = format_static_line(means['lower'], "Нижнее А/Д (ср.)", "yellow",data)
+        # fmt_data['mid_pulse'] = format_static_line(means['pulse'], "Пульс (ср.)", "green",data)
+        # series = f'{{label: "Время"}},{fmt_data["upper"][0]},{fmt_data["lower"][0]},{fmt_data["pulse"][0]},{fmt_data["mid_upper"][0]},{fmt_data["mid_lower"][0]},{fmt_data["mid_pulse"][0]}'
+        # values = [fmt_data['ts'][1],fmt_data['upper'][1],fmt_data['lower'][1],fmt_data['pulse'][1],fmt_data['mid_upper'][1],fmt_data['mid_lower'][1],fmt_data['mid_pulse'][1]]
     else:
         name = 'Пациент не определен'
         birth = datetime.datetime.fromtimestamp(0)
@@ -186,8 +204,8 @@ async def patient_page(req):
     userdata = f'<p><strong>ФИО: </strong>{name}</p>\n<p><strong>Дата рождения: </strong>{birth.strftime("%d.%m.%Y")} ({int((datetime.datetime.now()-birth).days/365)} лет)</p>\n<p><strong>Средние показатели: </strong>{means["upper"]}/{means["lower"]}/{means["pulse"]}</p>'
     with open('html\\index.html','r',encoding='utf-8') as f:
         html = f.read()
-        html = html.replace("===DATA===",str(values))
-        html = html.replace("===SERIES===",series)
+        html = html.replace("===TIMESTAMPS===",str([val for val in timestamps]))
+        html = html.replace("===DATASETS===",datasets)
         html = html.replace("===USERDATA===",userdata)
         return web.Response(text=html,content_type='text/html')
 
