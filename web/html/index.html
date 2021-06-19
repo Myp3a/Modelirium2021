@@ -61,11 +61,14 @@
     </span>
   </div>
   <div class="container">
-    <span class="contained">
-      <img src="static/person.png" style="flex-shrink: 100;">
+    <span class="contained" style="flex-shrink: 1;">
+      <img src="static/person.png">
     </span>
-    <span class="contained">
+    <span class="contained" style="flex-grow: 10;">
       ===USERDATA===
+    </span>
+    <span class="contained" style="flex-grow: 1;">
+      <button class="buttons" onclick="">Написать пациенту</button>
     </span>
   </div>
   <div id="graph-area" class="graph">
@@ -85,6 +88,7 @@
         };
       let chart_area = document.getElementById("graph-area");
       let uplot = new uPlot(opts, data, chart_area);
+      uplot.setScale('x', {min: + new Date() / 1000 - 2592000, max: + new Date() / 1000})
     </script>
 </body>
 </html>

@@ -111,20 +111,27 @@ async def meow(req):
 async def patient_page(req):
     #print(db.patient_states(req.match_info['patient_id']))
     patient_id = req.match_info['patient_id']
-    name = 'Пупкин Василий Иванович'
-    birth = datetime.datetime.fromtimestamp(185938914)
-    means = db.patient_means(patient_id)
     data = db.get_patient_data(patient_id)
-    fmt_data = {'ts':None,'upper':None,'lower':None,'pulse':None,'oxymetr':None,'mid_upper':None,'mid_lower':None,'mid_pulse':None}
-    fmt_data['ts'] = format_in_series("ts","Время",(0,0,0),data)
-    fmt_data['upper'] = format_in_series("up_press","Верхее А/Д",(200,0,0),data)
-    fmt_data['lower'] = format_in_series("down_press","Нижнее А/Д",(200,200,0),data)
-    fmt_data['pulse'] = format_in_series("pulse","Пульс",(0,200,0),data)
-    fmt_data['mid_upper'] = format_static_line(means['upper'], "Верхнее А/Д (ср.)", "red",data)
-    fmt_data['mid_lower'] = format_static_line(means['lower'], "Нижнее А/Д (ср.)", "yellow",data)
-    fmt_data['mid_pulse'] = format_static_line(means['pulse'], "Пульс (ср.)", "green",data)
-    series = f'{{label: "Время"}},{fmt_data["upper"][0]},{fmt_data["lower"][0]},{fmt_data["pulse"][0]},{fmt_data["mid_upper"][0]},{fmt_data["mid_lower"][0]},{fmt_data["mid_pulse"][0]}'
-    values = [fmt_data['ts'][1],fmt_data['upper'][1],fmt_data['lower'][1],fmt_data['pulse'][1],fmt_data['mid_upper'][1],fmt_data['mid_lower'][1],fmt_data['mid_pulse'][1]]
+    if len(data) != 0:
+        name = 'Пупкин Василий Иванович'
+        birth = datetime.datetime.fromtimestamp(185938914)
+        means = db.patient_means(patient_id)
+        fmt_data = {'ts':None,'upper':None,'lower':None,'pulse':None,'oxymetr':None,'mid_upper':None,'mid_lower':None,'mid_pulse':None}
+        fmt_data['ts'] = format_in_series("ts","Время",(0,0,0),data)
+        fmt_data['upper'] = format_in_series("up_press","Верхее А/Д",(100,100,200),data)
+        fmt_data['lower'] = format_in_series("down_press","Нижнее А/Д",(200,200,0),data)
+        fmt_data['pulse'] = format_in_series("pulse","Пульс",(0,200,0),data)
+        fmt_data['mid_upper'] = format_static_line(means['upper'], "Верхнее А/Д (ср.)", "lightblue",data)
+        fmt_data['mid_lower'] = format_static_line(means['lower'], "Нижнее А/Д (ср.)", "yellow",data)
+        fmt_data['mid_pulse'] = format_static_line(means['pulse'], "Пульс (ср.)", "green",data)
+        series = f'{{label: "Время"}},{fmt_data["upper"][0]},{fmt_data["lower"][0]},{fmt_data["pulse"][0]},{fmt_data["mid_upper"][0]},{fmt_data["mid_lower"][0]},{fmt_data["mid_pulse"][0]}'
+        values = [fmt_data['ts'][1],fmt_data['upper'][1],fmt_data['lower'][1],fmt_data['pulse'][1],fmt_data['mid_upper'][1],fmt_data['mid_lower'][1],fmt_data['mid_pulse'][1]]
+    else:
+        name = 'Пациент не определен'
+        birth = datetime.datetime.fromtimestamp(0)
+        means = {'upper':0,'lower':0,'pulse':0}
+        values = []
+        series = '{}'
     userdata = f'<p><strong>ФИО: </strong>{name}</p>\n<p><strong>Дата рождения: </strong>{birth.strftime("%d.%m.%Y")} ({int((datetime.datetime.now()-birth).days/365)} лет)</p>\n<p><strong>Средние показатели: </strong>{means["upper"]}/{means["lower"]}/{means["pulse"]}</p>'
     with open('html\\index.html','r',encoding='utf-8') as f:
         html = f.read()
